@@ -51,19 +51,80 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
     }
-    
+
     # ------------------------------------------------------------
-    # 新增：保活测试接口 /ping
+    # 新增：GitHub API 代理
+    # 用法：https://你的域名/github/user/repos -> https://api.github.com/user/repos
     # ------------------------------------------------------------
-    location /ping {
-        # 关闭此路径的日志，避免监控请求刷屏
-        access_log off;
+    location /github/ {
+        proxy_pass https://api.github.com/;
+
+        # SSL/SNI 配置
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.github.com;
+
+        # 基础代理头
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # GitHub API 不需要太长的流式超时，但为了防止大文件/大列表传输中断，设置 60s
+        proxy_read_timeout 60s;
         
-        # 设置返回类型为 JSON
-        default_type application/json;
-        
-        # 返回固定的 JSON 字符串
-        return 200 '{"status":"ok", "message":"pong", "platform":"render"}';
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # ------------------------------------------------------------
+    # 新增：OpenAI API 代理 (ChatGPT)
+    # 用法：https://你的域名/openai/v1/chat/completions -> https://api.openai.com/v1/chat/completions
+    # ------------------------------------------------------------
+    location /openai/ {
+        proxy_pass https://api.openai.com/;
+
+        # SSL/SNI 配置
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.openai.com;
+
+        # 基础代理头
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # LLM 专用：流式输出优化
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # ------------------------------------------------------------
+    # 新增：xAI API 代理 (Grok)
+    # 用法：https://你的域名/xai/v1/chat/completions -> https://api.x.ai/v1/chat/completions
+    # ------------------------------------------------------------
+    location /xai/ {
+        proxy_pass https://api.x.ai/;
+
+        # SSL/SNI 配置
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.x.ai;
+
+        # 基础代理头
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # LLM 专用：流式输出优化
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
     }
 
     # 原有的健康检查端点 (保留作为简单的 HTTP 200 检测)
