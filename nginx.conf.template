@@ -1,0 +1,57 @@
+server {
+    # 监听 Render 分配的环境变量 PORT
+    listen ${PORT};
+    server_name localhost;
+
+    # 优化日志格式，避免记录过多敏感信息（可选）
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location / {
+        # 核心：将请求转发到 Google Gemini API
+        proxy_pass https://generativelanguage.googleapis.com;
+
+        # ------------------------------------------------------------
+        # 关键配置：处理 HTTPS 握手和域名验证
+        # ------------------------------------------------------------
+        
+        # 开启 SSL 服务器名称指示 (SNI)，Google 需要这个才能正确握手
+        proxy_ssl_server_name on;
+        
+        # 强制将 Host 头设置为 Google 的域名，而不是你的 Render 域名
+        proxy_set_header Host generativelanguage.googleapis.com;
+
+        # ------------------------------------------------------------
+        # 转发客户端真实 IP 和协议头 (标准代理设置)
+        # ------------------------------------------------------------
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # ------------------------------------------------------------
+        # 针对 Gemini 流式输出 (Streaming) 的优化
+        # ------------------------------------------------------------
+        
+        # 关闭缓冲，确保打字机效果流畅传输
+        proxy_buffering off;
+        
+        # 禁用缓存
+        proxy_cache off;
+
+        # 增加超时时间，防止长对话生成时连接断开
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+
+        # ------------------------------------------------------------
+        # 解决某些情况下的 HTTP 1.1 问题
+        # ------------------------------------------------------------
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+    
+    # 健康检查端点 (可选，用于 Render 检测服务是否存活)
+    location /health {
+        access_log off;
+        return 200 "OK";
+    }
+}
