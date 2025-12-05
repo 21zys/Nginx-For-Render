@@ -52,7 +52,21 @@ server {
         proxy_set_header Connection "";
     }
     
-    # 健康检查端点 (可选，用于 Render 检测服务是否存活)
+    # ------------------------------------------------------------
+    # 新增：保活测试接口 /ping
+    # ------------------------------------------------------------
+    location /ping {
+        # 关闭此路径的日志，避免监控请求刷屏
+        access_log off;
+        
+        # 设置返回类型为 JSON
+        default_type application/json;
+        
+        # 返回固定的 JSON 字符串
+        return 200 '{"status":"ok", "message":"pong", "platform":"render"}';
+    }
+
+    # 原有的健康检查端点 (保留作为简单的 HTTP 200 检测)
     location /health {
         access_log off;
         return 200 "OK";
