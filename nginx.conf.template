@@ -7,9 +7,12 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
-    location / {
+    # 修改为 /gemini/ 前缀，以便腾出根路径给其他服务
+    location /gemini/ {
         # 核心：将请求转发到 Google Gemini API
-        proxy_pass https://generativelanguage.googleapis.com;
+        # 注意：URL 结尾加了斜杠 /，用于自动剥离 /gemini/ 前缀
+        # 即：请求 /gemini/v1beta/... 会变成 upstream 的 /v1beta/...
+        proxy_pass https://generativelanguage.googleapis.com/;
 
         # ------------------------------------------------------------
         # 关键配置：处理 HTTPS 握手和域名验证
