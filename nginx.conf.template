@@ -1,113 +1,342 @@
 server {
-    # 监听 Render 分配的环境变量 PORT
     listen ${PORT};
     server_name localhost;
 
-    # 优化日志格式，避免记录过多敏感信息（可选）
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
     # ------------------------------------------------------------
-    # 根路径处理：返回路由映射表的 JSON
+    # 根路径：显示所有可用端点 (已更新所有新增服务)
     # ------------------------------------------------------------
     location / {
         default_type application/json;
-        # 返回配置的代理规则，方便程序读取或人工查看
-        return 200 '{"title":"Nginx-For-Render","description":"通过 Render 平台部署 Nginx 反向代理，代理指定路径的流量到指定域名。目前支持 Gemini、OpenAI、GitHub Rest API、xAI。","proxies":[{"/gemini/":"https://generativelanguage.googleapis.com/"},{"/github/":"https://api.github.com/"},{"/openai/":"https://api.openai.com/"},{"/xai/":"https://api.x.ai/"}]}';
+        charset utf-8;
+        return 200 '{"title":"Universal API Proxy","description":"全能 API 转发服务，运行于 Render。","proxies":[{"/gemini/":"Google Gemini 大模型接口 (https://generativelanguage.googleapis.com/)"},{"/openai/":"OpenAI ChatGPT 接口 (https://api.openai.com/)"},{"/anthropic/":"Anthropic Claude 接口 (https://api.anthropic.com/)"},{"/xai/":"xAI Grok 接口 (https://api.x.ai/)"},{"/mistral/":"Mistral AI 开源模型接口 (https://api.mistral.ai/)"},{"/groq/":"Groq 高速推理接口 (https://api.groq.com/)"},{"/perplexity/":"Perplexity 联网搜索接口 (https://api.perplexity.ai/)"},{"/together/":"Together AI 模型聚合接口 (https://api.together.xyz/)"},{"/cohere/":"Cohere RAG/Embedding 接口 (https://api.cohere.ai/)"},{"/stability/":"Stability AI 绘画接口 (https://api.stability.ai/)"},{"/github/":"GitHub REST API 开发接口 (https://api.github.com/)"},{"/telegram/":"Telegram Bot 机器人接口 (https://api.telegram.org/)"},{"/discord/":"Discord Bot 机器人接口 (https://discord.com/)"},{"/notion/":"Notion 笔记 API (https://api.notion.com/)"},{"/deepl/":"DeepL 翻译接口 Free版 (https://api-free.deepl.com/)"},{"/hf/":"Hugging Face 推理接口 (https://api-inference.huggingface.co/)"},{"/wiki/":"Wikipedia 维基百科接口 (https://en.wikipedia.org/)"},{"/gsearch/":"Google 自定义搜索接口 (https://customsearch.googleapis.com/)"},{"/tmdb/":"TMDB 影视元数据接口 (https://api.themoviedb.org/)"},{"/line/":"Line 即时通讯接口 (https://api.line.me/)"},{"/slack/":"Slack 企业协作接口 (https://slack.com/)"}]}';
     }
 
-    # ------------------------------------------------------------
-    # Gemini API 代理
-    # ------------------------------------------------------------
-    location /gemini/ {
-        # 核心：将请求转发到 Google Gemini API
-        # 注意：URL 结尾加了斜杠 /，用于自动剥离 /gemini/ 前缀
-        proxy_pass https://generativelanguage.googleapis.com/;
+    # ============================================================
+    # 第一梯队：核心 LLM 服务
+    # ============================================================
 
-        # SSL/SNI 配置
+    # 1. Google Gemini
+    location /gemini/ {
+        proxy_pass https://generativelanguage.googleapis.com/;
         proxy_ssl_server_name on;
         proxy_set_header Host generativelanguage.googleapis.com;
-
-        # 基础代理头
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # 针对 Gemini 流式输出 (Streaming) 的优化
         proxy_buffering off;
         proxy_cache off;
+        chunked_transfer_encoding off;
         proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-
-        # HTTP 1.1 支持
         proxy_http_version 1.1;
         proxy_set_header Connection "";
     }
 
-    # ------------------------------------------------------------
-    # GitHub API 代理
-    # ------------------------------------------------------------
-    location /github/ {
-        proxy_pass https://api.github.com/;
-
-        proxy_ssl_server_name on;
-        proxy_set_header Host api.github.com;
-
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_read_timeout 60s;
-        
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-    }
-
-    # ------------------------------------------------------------
-    # OpenAI API 代理 (ChatGPT)
-    # ------------------------------------------------------------
+    # 2. OpenAI (ChatGPT)
     location /openai/ {
         proxy_pass https://api.openai.com/;
-
         proxy_ssl_server_name on;
         proxy_set_header Host api.openai.com;
-
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
         proxy_buffering off;
         proxy_cache off;
         proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-
         proxy_http_version 1.1;
         proxy_set_header Connection "";
     }
 
-    # ------------------------------------------------------------
-    # xAI API 代理 (Grok)
-    # ------------------------------------------------------------
+    # 3. Anthropic (Claude)
+    location /anthropic/ {
+        proxy_pass https://api.anthropic.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.anthropic.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass_request_headers on;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 4. xAI (Grok)
     location /xai/ {
         proxy_pass https://api.x.ai/;
-
         proxy_ssl_server_name on;
         proxy_set_header Host api.x.ai;
-
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
         proxy_buffering off;
         proxy_cache off;
         proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-
         proxy_http_version 1.1;
         proxy_set_header Connection "";
     }
 
-    # 原有的健康检查端点
+    # ============================================================
+    # 第二梯队：新兴/开源模型推理平台
+    # ============================================================
+
+    # 5. Mistral AI
+    location /mistral/ {
+        proxy_pass https://api.mistral.ai/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.mistral.ai;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 6. Groq
+    location /groq/ {
+        proxy_pass https://api.groq.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.groq.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 7. Perplexity
+    location /perplexity/ {
+        proxy_pass https://api.perplexity.ai/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.perplexity.ai;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 8. Together AI
+    location /together/ {
+        proxy_pass https://api.together.xyz/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.together.xyz;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 9. Cohere
+    location /cohere/ {
+        proxy_pass https://api.cohere.ai/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.cohere.ai;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # ============================================================
+    # 第三梯队：多媒体、开发工具与 Bot
+    # ============================================================
+
+    # 10. Stability AI
+    location /stability/ {
+        proxy_pass https://api.stability.ai/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.stability.ai;
+        client_max_body_size 20M;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 11. GitHub API
+    location /github/ {
+        proxy_pass https://api.github.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.github.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 12. Telegram Bot API
+    location /telegram/ {
+        proxy_pass https://api.telegram.org/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.telegram.org;
+        client_max_body_size 50M;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 13. Discord API
+    location /discord/ {
+        proxy_pass https://discord.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host discord.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 14. Notion API
+    location /notion/ {
+        proxy_pass https://api.notion.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.notion.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+    
+    # 15. DeepL API
+    location /deepl/ {
+        proxy_pass https://api-free.deepl.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api-free.deepl.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 16. Hugging Face Inference API
+    location /hf/ {
+        proxy_pass https://api-inference.huggingface.co/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api-inference.huggingface.co;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # ============================================================
+    # 第四梯队：知识、搜索与媒体 (新增 非AI类)
+    # ============================================================
+
+    # 17. Wikipedia API (维基百科)
+    # 用法: https://你的域名/wiki/api/rest_v1/page/summary/Earth
+    location /wiki/ {
+        proxy_pass https://en.wikipedia.org/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host en.wikipedia.org;
+        proxy_set_header User-Agent "Universal-Proxy/1.0"; # Wikipedia 需要 UA
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 18. Google Custom Search (谷歌搜索 API)
+    # 用法: https://你的域名/gsearch/customsearch/v1?...
+    location /gsearch/ {
+        proxy_pass https://customsearch.googleapis.com/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host customsearch.googleapis.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 19. The Movie DB (TMDB) (电影元数据刮削)
+    # 用法: https://你的域名/tmdb/3/movie/550?...
+    location /tmdb/ {
+        proxy_pass https://api.themoviedb.org/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.themoviedb.org;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 20. Line Messaging API (社交)
+    location /line/ {
+        proxy_pass https://api.line.me/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.line.me;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 21. Slack API (企业协作)
+    # 映射逻辑: /slack/methods/chat.postMessage -> https://slack.com/api/methods/chat.postMessage
+    location /slack/ {
+        proxy_pass https://slack.com/api/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host slack.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+    
+    # ============================================================
+    # 监控与保活
+    # ============================================================
+    location /ping {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"ok", "message":"pong", "platform":"render"}';
+    }
+
     location /health {
         access_log off;
         return 200 "OK";
