@@ -11,7 +11,7 @@ server {
     location / {
         default_type application/json;
         charset utf-8;
-        return 200 '{"title":"Universal API Proxy","description":"全能 API 转发服务，运行于 Render。","proxies":[{"/gemini/":"Google Gemini 大模型接口 (https://generativelanguage.googleapis.com/)"},{"/openai/":"OpenAI ChatGPT 接口 (https://api.openai.com/)"},{"/anthropic/":"Anthropic Claude 接口 (https://api.anthropic.com/)"},{"/xai/":"xAI Grok 接口 (https://api.x.ai/)"},{"/mistral/":"Mistral AI 开源模型接口 (https://api.mistral.ai/)"},{"/groq/":"Groq 高速推理接口 (https://api.groq.com/)"},{"/perplexity/":"Perplexity 联网搜索接口 (https://api.perplexity.ai/)"},{"/together/":"Together AI 模型聚合接口 (https://api.together.xyz/)"},{"/cohere/":"Cohere RAG/Embedding 接口 (https://api.cohere.ai/)"},{"/stability/":"Stability AI 绘画接口 (https://api.stability.ai/)"},{"/github/":"GitHub REST API 开发接口 (https://api.github.com/)"},{"/telegram/":"Telegram Bot 机器人接口 (https://api.telegram.org/)"},{"/discord/":"Discord Bot 机器人接口 (https://discord.com/)"},{"/notion/":"Notion 笔记 API (https://api.notion.com/)"},{"/deepl/":"DeepL 翻译接口 Free版 (https://api-free.deepl.com/)"},{"/hf/":"Hugging Face 推理接口 (https://api-inference.huggingface.co/)"},{"/wiki/":"Wikipedia 维基百科接口 (https://en.wikipedia.org/)"},{"/gsearch/":"Google 自定义搜索接口 (https://customsearch.googleapis.com/)"},{"/tmdb/":"TMDB 影视元数据接口 (https://api.themoviedb.org/)"},{"/line/":"Line 即时通讯接口 (https://api.line.me/)"},{"/slack/":"Slack 企业协作接口 (https://slack.com/)"}]}';
+        return 200 '{"title":"Universal API Proxy","description":"全能 API 转发服务，运行于 Render。","proxies":[{"/gemini/":"Google Gemini 大模型接口 (https://generativelanguage.googleapis.com/)"},{"/openai/":"OpenAI ChatGPT 接口 (https://api.openai.com/)"},{"/anthropic/":"Anthropic Claude 接口 (https://api.anthropic.com/)"},{"/xai/":"xAI Grok 接口 (https://api.x.ai/)"},{"/mistral/":"Mistral AI 开源模型接口 (https://api.mistral.ai/)"},{"/groq/":"Groq 高速推理接口 (https://api.groq.com/)"},{"/cerebras/":"Cerebras WSE 高速推理接口 (https://api.cerebras.ai/)"},{"/perplexity/":"Perplexity 联网搜索接口 (https://api.perplexity.ai/)"},{"/together/":"Together AI 模型聚合接口 (https://api.together.xyz/)"},{"/cohere/":"Cohere RAG/Embedding 接口 (https://api.cohere.ai/)"},{"/stability/":"Stability AI 绘画接口 (https://api.stability.ai/)"},{"/github/":"GitHub REST API 开发接口 (https://api.github.com/)"},{"/telegram/":"Telegram Bot 机器人接口 (https://api.telegram.org/)"},{"/discord/":"Discord Bot 机器人接口 (https://discord.com/)"},{"/notion/":"Notion 笔记 API (https://api.notion.com/)"},{"/deepl/":"DeepL 翻译接口 Free版 (https://api-free.deepl.com/)"},{"/hf/":"Hugging Face 推理接口 (https://api-inference.huggingface.co/)"},{"/wiki/":"Wikipedia 维基百科接口 (https://en.wikipedia.org/)"},{"/gsearch/":"Google 自定义搜索接口 (https://customsearch.googleapis.com/)"},{"/tmdb/":"TMDB 影视元数据接口 (https://api.themoviedb.org/)"},{"/line/":"Line 即时通讯接口 (https://api.line.me/)"},{"/slack/":"Slack 企业协作接口 (https://slack.com/)"}]}';
     }
 
     # ============================================================
@@ -114,7 +114,22 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 7. Perplexity
+    # 7. Cerebras (Wafer-Scale Engine 推理) [新增]
+    location /cerebras/ {
+        proxy_pass https://api.cerebras.ai/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.cerebras.ai;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # 8. Perplexity
     location /perplexity/ {
         proxy_pass https://api.perplexity.ai/;
         proxy_ssl_server_name on;
@@ -129,7 +144,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 8. Together AI
+    # 9. Together AI
     location /together/ {
         proxy_pass https://api.together.xyz/;
         proxy_ssl_server_name on;
@@ -144,7 +159,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 9. Cohere
+    # 10. Cohere
     location /cohere/ {
         proxy_pass https://api.cohere.ai/;
         proxy_ssl_server_name on;
@@ -163,7 +178,7 @@ server {
     # 第三梯队：多媒体、开发工具与 Bot
     # ============================================================
 
-    # 10. Stability AI
+    # 11. Stability AI
     location /stability/ {
         proxy_pass https://api.stability.ai/;
         proxy_ssl_server_name on;
@@ -177,7 +192,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 11. GitHub API
+    # 12. GitHub API
     location /github/ {
         proxy_pass https://api.github.com/;
         proxy_ssl_server_name on;
@@ -190,7 +205,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 12. Telegram Bot API
+    # 13. Telegram Bot API
     location /telegram/ {
         proxy_pass https://api.telegram.org/;
         proxy_ssl_server_name on;
@@ -204,7 +219,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 13. Discord API
+    # 14. Discord API
     location /discord/ {
         proxy_pass https://discord.com/;
         proxy_ssl_server_name on;
@@ -217,7 +232,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 14. Notion API
+    # 15. Notion API
     location /notion/ {
         proxy_pass https://api.notion.com/;
         proxy_ssl_server_name on;
@@ -230,7 +245,7 @@ server {
         proxy_set_header Connection "";
     }
     
-    # 15. DeepL API
+    # 16. DeepL API
     location /deepl/ {
         proxy_pass https://api-free.deepl.com/;
         proxy_ssl_server_name on;
@@ -243,7 +258,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 16. Hugging Face Inference API
+    # 17. Hugging Face Inference API
     location /hf/ {
         proxy_pass https://api-inference.huggingface.co/;
         proxy_ssl_server_name on;
@@ -258,7 +273,7 @@ server {
     # 第四梯队：知识、搜索与媒体 (新增 非AI类)
     # ============================================================
 
-    # 17. Wikipedia API (维基百科)
+    # 18. Wikipedia API (维基百科)
     # 用法: https://你的域名/wiki/api/rest_v1/page/summary/Earth
     location /wiki/ {
         proxy_pass https://en.wikipedia.org/;
@@ -273,7 +288,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 18. Google Custom Search (谷歌搜索 API)
+    # 19. Google Custom Search (谷歌搜索 API)
     # 用法: https://你的域名/gsearch/customsearch/v1?...
     location /gsearch/ {
         proxy_pass https://customsearch.googleapis.com/;
@@ -287,7 +302,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 19. The Movie DB (TMDB) (电影元数据刮削)
+    # 20. The Movie DB (TMDB) (电影元数据刮削)
     # 用法: https://你的域名/tmdb/3/movie/550?...
     location /tmdb/ {
         proxy_pass https://api.themoviedb.org/;
@@ -301,7 +316,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 20. Line Messaging API (社交)
+    # 21. Line Messaging API (社交)
     location /line/ {
         proxy_pass https://api.line.me/;
         proxy_ssl_server_name on;
@@ -314,7 +329,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 21. Slack API (企业协作)
+    # 22. Slack API (企业协作)
     # 映射逻辑: /slack/methods/chat.postMessage -> https://slack.com/api/methods/chat.postMessage
     location /slack/ {
         proxy_pass https://slack.com/api/;
