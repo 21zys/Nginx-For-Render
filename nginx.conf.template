@@ -388,6 +388,17 @@ server {
         # proxy_set_header Referer "https://music-dl.sayqz.com";
     }
 
+    location /img1_kuwo/ {
+        proxy_pass https://img1.kwcdn.kuwo.cn/;
+        proxy_set_header Host img1.kwcdn.kuwo.cn;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Referer "https://www.kuwo.cn/";
+        # 解决 SSL 握手问题
+        proxy_ssl_server_name on;
+        proxy_ssl_protocols TLSv1.2 TLSv1.3;
+    }
+
 
     # ============================================================
     # 监控与保活
