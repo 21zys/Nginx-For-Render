@@ -120,7 +120,7 @@
                 
                 <!-- 搜索视图 -->
                 <div id="view-search" class="max-w-6xl mx-auto w-full">
-                    <div class="mb-6">
+                    <div class="mb-8">
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <i data-lucide="search" class="text-gray-400 group-focus-within:text-brand-500 transition-colors"></i>
@@ -135,19 +135,6 @@
                             </button>
                         </div>
                     </div>
-                    
-                    <!-- 布局切换工具栏 -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="text-sm text-gray-400 font-medium pl-1">搜索结果</div>
-                        <div class="flex bg-dark-800 rounded-lg p-1 border border-gray-800">
-                            <button onclick="app.setLayout(1)" id="btn-layout-1" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition" title="单栏视图">
-                                <i data-lucide="align-justify" size="18"></i>
-                            </button>
-                            <button onclick="app.setLayout(2)" id="btn-layout-2" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition" title="两栏视图">
-                                <i data-lucide="layout-grid" size="18"></i>
-                            </button>
-                        </div>
-                    </div>
 
                     <!-- 搜索结果列表 -->
                     <div id="search-status" class="text-center text-gray-500 py-20 hidden">
@@ -155,7 +142,7 @@
                         <p>输入关键词开始搜索音乐世界</p>
                     </div>
 
-                    <div id="search-results" class="grid grid-cols-1 gap-4">
+                    <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         <!-- 结果卡片渲染区 -->
                     </div>
                 </div>
@@ -384,28 +371,17 @@
                     return url.replace('https://music-dl.sayqz.com', API_BASE);
                 }
             }
+            
+            return url;
+        }
         
         // 数据持久化管理 (LocalStorage)
         const Storage = {
             getKey: () => 'tunehub_v1_data',
-            get: () => {
-                const defaultData = {
-                    playlists: {"我喜欢的音乐": []},
-                    searchLayout: 2 // 默认两栏布局
-                };
-                return JSON.parse(localStorage.getItem(Storage.getKey()) || JSON.stringify(defaultData));
-            },
+            get: () => JSON.parse(localStorage.getItem(Storage.getKey()) || '{"playlists": {"我喜欢的音乐": []}}'),
             save: (data) => localStorage.setItem(Storage.getKey(), JSON.stringify(data)),
             
             getPlaylists: () => Storage.get().playlists,
-            
-            getLayout: () => Storage.get().searchLayout || 2,
-
-            saveLayout: (layout) => {
-                const data = Storage.get();
-                data.searchLayout = layout;
-                Storage.save(data);
-            },
             
             addPlaylist: (name) => {
                 const data = Storage.get();
@@ -461,8 +437,7 @@
                 currentIndex: -1,
                 lyrics: [],
                 mode: 'loop', // loop, one, random
-                activePlaylistView: null,
-                searchLayout: 2 // 1 or 2
+                activePlaylistView: null
             },
             
             elements: {
@@ -472,9 +447,6 @@
             init() {
                 this.renderNav();
                 
-                // 加载布局偏好
-                this.setLayout(Storage.getLayout());
-
                 // 监听 Audio 事件
                 const audio = this.elements.audio;
                 audio.addEventListener('timeupdate', () => this.onTimeUpdate());
@@ -504,24 +476,6 @@
                 // 默认加载
                 document.getElementById('view-search').classList.remove('hidden');
                 document.getElementById('search-status').classList.remove('hidden');
-            },
-
-            // 布局切换逻辑
-            setLayout(cols) {
-                this.state.searchLayout = cols;
-                Storage.saveLayout(cols);
-                
-                const container = document.getElementById('search-results');
-                // 移除旧的类名，添加新的类名
-                container.className = cols === 1 
-                    ? "grid grid-cols-1 gap-4" 
-                    : "grid grid-cols-2 gap-4"; // 强制两栏，不使用 md:grid-cols-X 响应式
-
-                // 更新按钮样式
-                document.getElementById('btn-layout-1').className = `p-1.5 rounded-md transition ${cols === 1 ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`;
-                document.getElementById('btn-layout-2').className = `p-1.5 rounded-md transition ${cols === 2 ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`;
-                
-                lucide.createIcons();
             },
 
             // 路由导航
