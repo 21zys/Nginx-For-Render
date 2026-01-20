@@ -360,10 +360,16 @@
             let url = song.pic || `${API_BASE}/api/?source=${song.platform}&type=pic&id=${song.id}`;
             
             // 2. 针对酷我音乐的图片跨域处理 (替换 img1.kwcdn.kuwo.cn)
-            if (USER_CONFIG.enableProxy && url.includes('img1.kwcdn.kuwo.cn')) {
-                // 将 https://img1.kwcdn.kuwo.cn/xxx 替换为 https://your-domain.com/img1_kuwo/xxx
-                // 同时支持 http 和 https 协议的替换
-                return url.replace(/https?:\/\/img1\.kwcdn\.kuwo\.cn/, `${USER_CONFIG.customDomain}/img1_kuwo`);
+            if (USER_CONFIG.enableProxy) {
+                if (url.includes('img1.kwcdn.kuwo.cn')) {
+                    // 原有逻辑：处理 kuwo 图片域名
+                    // 将 https://img1.kwcdn.kuwo.cn/xxx 替换为 https://your-domain.com/img1_kuwo/xxx
+                    return url.replace(/https?:\/\/img1\.kwcdn\.kuwo\.cn/, `${USER_CONFIG.customDomain}/img1_kuwo`);
+                } else if (url.includes('music-dl.sayqz.com')) {
+                    // 新增逻辑：处理 sayqz 域名
+                    // 将 https://music-dl.sayqz.com 替换为 customDomain 变量的内容
+                    return url.replace('https://music-dl.sayqz.com', USER_CONFIG.customDomain);
+                }
             }
             
             return url;
