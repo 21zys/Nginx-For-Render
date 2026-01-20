@@ -382,10 +382,15 @@
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-6">
-                <button onclick="backupMgr.saveConfig()" class="flex-1 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition">保存配置</button>
-                <button onclick="backupMgr.manualBackup()" class="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition flex items-center gap-2">
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="backupMgr.saveConfig()" class="col-span-2 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition">保存配置</button>
+                
+                <button onclick="backupMgr.manualBackup()" class="py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition flex items-center justify-center gap-2">
                     <i data-lucide="upload-cloud" size="16"></i> 立即备份
+                </button>
+                
+                <button onclick="backupMgr.manualRestore()" class="py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition flex items-center justify-center gap-2">
+                    <i data-lucide="download-cloud" size="16"></i> 从云端恢复
                 </button>
             </div>
         </div>
@@ -1032,14 +1037,24 @@
 
             init() {
                 const cfg = this.getConfig();
-                if (cfg.autoSync && cfg.workerUrl) this.loadLatestFromCloud();
+                // 自动加载逻辑：稍微延迟执行，确保 Storage 对象已完全加载
+                if (cfg.autoSync && cfg.workerUrl) {
+                    setTimeout(() => this.loadLatestFromCloud(true), 500); 
+                }
+                
                 this.setupInterval();
+                
                 window.addEventListener('beforeunload', () => {
                     if (cfg.mode === 'interval' || cfg.mode === 'instant') this.manualBackup(true);
                 });
-                document.getElementById('cfg-mode')?.addEventListener('change', (e) => {
-                    document.getElementById('cfg-interval-box').classList.toggle('hidden', e.target.value !== 'interval');
-                });
+
+                // 动态监听模式切换
+                const modeSelect = document.getElementById('cfg-mode');
+                if (modeSelect) {
+                    modeSelect.addEventListener('change', (e) => {
+                        document.getElementById('cfg-interval-box').classList.toggle('hidden', e.target.value !== 'interval');
+                    });
+                }
             },
 
             setupInterval() {
@@ -1050,6 +1065,7 @@
                 }
             },
 
+            // --- 功能：上传备份 ---
             async manualBackup(silent = false) {
                 const cfg = this.getConfig();
                 if (!cfg.workerUrl) return !silent && alert('请先配置 Worker 接口地址');
@@ -1061,38 +1077,76 @@
                     });
                     if (res.ok && !silent) alert('云端备份同步成功！');
                 } catch (e) {
-                    if (!silent) alert('备份失败，请检查网络或 Worker 地址');
+                    console.error('Upload failed:', e);
+                    if (!silent) alert('备份失败，请检查 Worker 地址或跨域设置');
                 }
             },
 
-            async loadLatestFromCloud() {
+            // --- 功能：手动下载恢复 ---
+            async manualRestore() {
+                if (confirm('确定要从云端恢复备份吗？这将覆盖你当前浏览器中的所有歌单数据！')) {
+                    await this.loadLatestFromCloud(false);
+                }
+            },
+
+            // --- 核心：从云端加载数据 ---
+            async loadLatestFromCloud(isAuto = false) {
                 const cfg = this.getConfig();
                 if (!cfg.workerUrl) return;
+
                 try {
                     const res = await fetch(`${cfg.workerUrl}?path=${cfg.path}`);
                     const remoteData = await res.json();
+                    
                     if (remoteData && remoteData.playlists) {
-                        Storage.save(remoteData, true); // 跳过触发实时备份循环
-                        app.renderNav(); 
-                        console.log('已自动同步云端备份');
+                        const localDataStr = localStorage.getItem(Storage.getKey());
+                        const remoteDataStr = JSON.stringify(remoteData);
+
+                        // 如果数据不一致，则覆盖
+                        if (localDataStr !== remoteDataStr) {
+                            Storage.save(remoteData, true); // true 表示不触发实时上传死循环
+                            
+                            if (isAuto) {
+                                console.log('检测到云端有更新，已自动同步');
+                                // 自动加载时，静默刷新导航和视图
+                                app.renderNav();
+                                if (app.state.activePlaylistView) app.openPlaylist(app.state.activePlaylistView);
+                            } else {
+                                alert('云端数据恢复成功！页面即将刷新以应用更改。');
+                                location.reload(); // 手动恢复时，刷新页面最稳妥
+                            }
+                        } else if (!isAuto) {
+                            alert('云端数据与本地一致，无需恢复。');
+                        }
+                    } else if (!isAuto) {
+                        alert('云端未发现任何备份文件。');
                     }
-                } catch (e) { console.error('Cloud sync failed', e); }
+                } catch (e) {
+                    console.error('Load failed:', e);
+                    if (!isAuto) alert('从云端获取数据失败，请检查网络或 Worker 配置。');
+                }
             },
 
             showModal() {
                 const cfg = this.getConfig();
-                document.getElementById('cfg-worker-url').value = cfg.workerUrl;
-                document.getElementById('cfg-backup-path').value = cfg.path;
-                document.getElementById('cfg-retention').value = cfg.retention;
-                document.getElementById('cfg-mode').value = cfg.mode;
-                document.getElementById('cfg-interval').value = cfg.interval;
-                document.getElementById('cfg-auto-sync').checked = cfg.autoSync;
+                const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+                setVal('cfg-worker-url', cfg.workerUrl);
+                setVal('cfg-backup-path', cfg.path);
+                setVal('cfg-retention', cfg.retention);
+                setVal('cfg-mode', cfg.mode);
+                setVal('cfg-interval', cfg.interval);
+                
+                const autoSyncEl = document.getElementById('cfg-auto-sync');
+                if (autoSyncEl) autoSyncEl.checked = cfg.autoSync;
+
                 document.getElementById('cfg-interval-box').classList.toggle('hidden', cfg.mode !== 'interval');
                 document.getElementById('modal-backup-settings').classList.replace('hidden', 'flex');
                 lucide.createIcons();
             },
 
-            hideModal() { document.getElementById('modal-backup-settings').classList.replace('flex', 'hidden'); },
+            hideModal() { 
+                document.getElementById('modal-backup-settings').classList.replace('flex', 'hidden'); 
+            },
 
             saveConfig() {
                 const newCfg = {
@@ -1107,6 +1161,8 @@
                 this.setupInterval();
                 this.hideModal();
                 alert('配置已保存');
+                // 如果开启了自动同步，立即执行一次检查
+                if (newCfg.autoSync) this.loadLatestFromCloud(true);
             }
         };
 
