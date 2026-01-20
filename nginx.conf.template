@@ -372,6 +372,24 @@ server {
     }
 
     # ============================================================
+    # 其他自定义代理 API
+    # ============================================================
+    location /music/ {
+        proxy_pass https://music-dl.sayqz.com/;
+        proxy_set_header Host music-dl.sayqz.com;
+        proxy_ssl_server_name on;
+        proxy_ssl_name music-dl.sayqz.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    
+        # 防止防盗链 (可选)
+        # 如果目标服务器检查 Referer，可以将其设置为空或设置为目标域名
+        # proxy_set_header Referer "https://music-dl.sayqz.com";
+    }
+
+
+    # ============================================================
     # 监控与保活
     # ============================================================
     location /ping {
