@@ -9,6 +9,8 @@ ENV PORT=80
 # 并使用 envsubst 替换环境变量后输出到 /etc/nginx/conf.d/default.conf
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
+COPY static/ /usr/share/nginx/html/
+
 # 暴露端口 (仅用于文档说明，实际由 Render 动态决定)
 EXPOSE ${PORT}
 
