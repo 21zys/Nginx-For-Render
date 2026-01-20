@@ -93,9 +93,9 @@
                     </div>
                 </div>
             </nav>
-            <div class="mt-auto p-4 border-t border-gray-800">
-                <button onclick="document.getElementById('modal-s3').classList.remove('hidden')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 w-full transition-colors">
-                    <i data-lucide="settings" size="18"></i> 系统配置
+            <div class="mt-auto pt-4 border-t border-gray-800">
+                <button onclick="backupMgr.showModal()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                    <i data-lucide="settings" size="18"></i> 系统备份设置
                 </button>
             </div>
         </aside>
@@ -341,73 +341,55 @@
         </div>
     </div>
 
-	<div id="modal-s3" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-		<div class="bg-dark-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-			<div class="flex justify-between items-center mb-6">
-				<h3 class="text-xl font-bold text-white">存储备份配置 (S3)</h3>
-				<button onclick="document.getElementById('modal-s3').classList.add('hidden')" class="text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
-			</div>
-			
-			<div class="space-y-4">
-				<div class="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
-					<div>
-						<div class="text-white font-medium">启用 S3 同步</div>
-						<div class="text-xs text-gray-500">将歌单数据备份至兼容 S3 的存储服务</div>
-					</div>
-					<input type="checkbox" id="s3-enabled" class="w-5 h-5 accent-brand-500">
-				</div>
 
-				<div class="grid grid-cols-2 gap-4">
-					<div>
-						<label class="block text-xs text-gray-500 mb-1">Endpoint</label>
-						<input type="text" id="s3-endpoint" placeholder="https://..." class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-					</div>
-					<div>
-						<label class="block text-xs text-gray-500 mb-1">Bucket</label>
-						<input type="text" id="s3-bucket" class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-					</div>
-					<div class="col-span-2">
-						<label class="block text-xs text-gray-500 mb-1">备份目录 (Directory)</label>
-						<input type="text" id="s3-dir" value="tunehub/backups/" class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-					</div>
-					<div>
-						<label class="block text-xs text-gray-500 mb-1">Access Key</label>
-						<input type="password" id="s3-ak" class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-					</div>
-					<div>
-						<label class="block text-xs text-gray-500 mb-1">Secret Key</label>
-						<input type="password" id="s3-sk" class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-					</div>
-				</div>
+    <div id="modal-backup-settings" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark-800 rounded-xl max-w-md w-full p-6 border border-gray-700 shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-white">S3 自动备份配置</h3>
+                <button onclick="backupMgr.hideModal()" class="text-gray-500 hover:text-white"><i data-lucide="x" size="20"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Worker 接口地址</label>
+                    <input type="text" id="cfg-worker-url" placeholder="https://your-worker.workers.dev" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">备份目录</label>
+                        <input type="text" id="cfg-backup-path" placeholder="music-backup" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">保留历史数</label>
+                        <input type="number" id="cfg-retention" value="5" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">备份模式</label>
+                    <select id="cfg-mode" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                        <option value="manual">手动备份</option>
+                        <option value="instant">实时备份 (修改即同步)</option>
+                        <option value="interval">定时备份 (自定义间隔)</option>
+                    </select>
+                </div>
+                <div id="cfg-interval-box" class="hidden">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">定时统计 (分钟)</label>
+                    <input type="number" id="cfg-interval" value="30" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                </div>
+                <div class="flex items-center gap-2 py-2">
+                    <input type="checkbox" id="cfg-auto-sync" class="w-4 h-4 rounded border-gray-700 bg-dark-900 text-brand-600">
+                    <label for="cfg-auto-sync" class="text-sm text-gray-300">启动页面时自动加载最新备份</label>
+                </div>
+            </div>
 
-				<hr class="border-gray-700">
-
-				<div class="space-y-3">
-					<label class="block text-sm font-medium text-gray-300">备份策略</label>
-					<select id="s3-mode" class="w-full bg-dark-900 border border-gray-700 rounded p-2 text-white">
-						<option value="immediate">实时同步 (每次修改时)</option>
-						<option value="interval">定时备份</option>
-					</select>
-					<div id="s3-interval-box" class="flex items-center gap-3">
-						<span class="text-xs text-gray-500">间隔 (分钟):</span>
-						<input type="number" id="s3-interval" value="30" class="w-20 bg-dark-900 border border-gray-700 rounded p-1 text-white">
-					</div>
-					<div class="flex items-center justify-between">
-						<span class="text-xs text-gray-500">历史保留数:</span>
-						<input type="number" id="s3-retention" value="5" class="w-20 bg-dark-900 border border-gray-700 rounded p-1 text-white">
-					</div>
-					<div class="flex items-center gap-2">
-						<input type="checkbox" id="s3-autosync" checked class="accent-brand-500">
-						<span class="text-xs text-gray-500">页面打开时自动加载最新备份</span>
-					</div>
-				</div>
-
-				<button onclick="saveS3Settings()" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold transition-all mt-4">
-					保存配置
-				</button>
-			</div>
-		</div>
-	</div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="backupMgr.saveConfig()" class="flex-1 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition">保存配置</button>
+                <button onclick="backupMgr.manualBackup()" class="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition flex items-center gap-2">
+                    <i data-lucide="upload-cloud" size="16"></i> 立即备份
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 初始化图标
@@ -452,14 +434,7 @@
         const Storage = {
             getKey: () => 'tunehub_v1_data',
             get: () => JSON.parse(localStorage.getItem(Storage.getKey()) || '{"playlists": {"我喜欢的音乐": []}}'),
-            save: (data) => {
-				localStorage.setItem(Storage.getKey(), JSON.stringify(data));
-				// --- 新增：触发备份 ---
-				const cfg = S3Backup.getConfig();
-				if (cfg.enabled && cfg.mode === 'immediate') {
-					S3Backup.upload(data);
-				}
-			},
+            save: (data) => localStorage.setItem(Storage.getKey(), JSON.stringify(data)),
             
             getPlaylists: () => Storage.get().playlists,
             
@@ -508,62 +483,6 @@
             }
         };
 
-
-		// --- S3 备份管理中心 ---
-		const S3Backup = {
-            getConfig: () => {
-                const defaultCfg = {
-                    enabled: false, endpoint: '', bucket: '', 
-                    accessKey: '', secretKey: '', directory: 'backup/music/',
-                    mode: 'interval', interval: 30, retention: 5, autoSync: true
-                };
-                return Object.assign(defaultCfg, JSON.parse(localStorage.getItem('s3_config') || '{}'));
-            },
-            
-            saveConfig: (cfg) => {
-                localStorage.setItem('s3_config', JSON.stringify(cfg));
-                S3Backup.initTimer();
-            },
-
-            async upload(data) {
-                const cfg = this.getConfig();
-                if (!cfg.enabled || !cfg.endpoint || !cfg.bucket) return;
-
-                const fileName = `backup_${Date.now()}.json`;
-                const url = `${cfg.endpoint.replace(/\/$/, '')}/${cfg.bucket}/${cfg.directory}${fileName}`;
-
-                try {
-                    // 注意：这里是 400 错误的重灾区。
-                    // 对于 R2，通常需要使用 AWS SDK 才能正确生成 Authorization Header。
-                    // 如果你使用公共可写的 URL（不推荐）或预签名 URL，fetch 才能成功。
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        mode: 'cors',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            // 如果你有 Worker 代理，可以在这里加鉴权 Token
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    console.log('备份成功:', fileName);
-                } catch (e) {
-                    console.error('备份失败，请检查 R2 CORS 设置或鉴权配置:', e);
-                }
-            },
-
-            timer: null,
-            initTimer() {
-                if (this.timer) clearInterval(this.timer);
-                const cfg = this.getConfig();
-                if (cfg.enabled && cfg.mode === 'interval') {
-                    this.timer = setInterval(() => this.upload(Storage.get()), cfg.interval * 60000);
-                }
-            }
-        };
-
-
         // 核心应用逻辑
         const app = {
             state: {
@@ -582,9 +501,6 @@
 
             init() {
                 this.renderNav();
-                loadS3SettingsToUI();
-                S3Backup.initTimer();
-                
                 
                 // 监听 Audio 事件
                 const audio = this.elements.audio;
@@ -1105,6 +1021,106 @@
             }
         };
 
+        const backupMgr = {
+            configKey: 'tunehub_backup_config',
+            intervalId: null,
+
+            getConfig() {
+                const defaultCfg = { workerUrl: '', path: 'tunehub_v1', retention: 5, mode: 'manual', interval: 30, autoSync: false };
+                return Object.assign(defaultCfg, JSON.parse(localStorage.getItem(this.configKey) || '{}'));
+            },
+
+            init() {
+                const cfg = this.getConfig();
+                if (cfg.autoSync && cfg.workerUrl) this.loadLatestFromCloud();
+                this.setupInterval();
+                window.addEventListener('beforeunload', () => {
+                    if (cfg.mode === 'interval' || cfg.mode === 'instant') this.manualBackup(true);
+                });
+                document.getElementById('cfg-mode')?.addEventListener('change', (e) => {
+                    document.getElementById('cfg-interval-box').classList.toggle('hidden', e.target.value !== 'interval');
+                });
+            },
+
+            setupInterval() {
+                if (this.intervalId) clearInterval(this.intervalId);
+                const cfg = this.getConfig();
+                if (cfg.mode === 'interval' && cfg.workerUrl) {
+                    this.intervalId = setInterval(() => this.manualBackup(true), cfg.interval * 60000);
+                }
+            },
+
+            async manualBackup(silent = false) {
+                const cfg = this.getConfig();
+                if (!cfg.workerUrl) return !silent && alert('请先配置 Worker 接口地址');
+                try {
+                    const res = await fetch(`${cfg.workerUrl}?path=${cfg.path}`, {
+                        method: 'POST',
+                        body: JSON.stringify({ data: Storage.get(), retention: parseInt(cfg.retention) }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (res.ok && !silent) alert('云端备份同步成功！');
+                } catch (e) {
+                    if (!silent) alert('备份失败，请检查网络或 Worker 地址');
+                }
+            },
+
+            async loadLatestFromCloud() {
+                const cfg = this.getConfig();
+                if (!cfg.workerUrl) return;
+                try {
+                    const res = await fetch(`${cfg.workerUrl}?path=${cfg.path}`);
+                    const remoteData = await res.json();
+                    if (remoteData && remoteData.playlists) {
+                        Storage.save(remoteData, true); // 跳过触发实时备份循环
+                        app.renderNav(); 
+                        console.log('已自动同步云端备份');
+                    }
+                } catch (e) { console.error('Cloud sync failed', e); }
+            },
+
+            showModal() {
+                const cfg = this.getConfig();
+                document.getElementById('cfg-worker-url').value = cfg.workerUrl;
+                document.getElementById('cfg-backup-path').value = cfg.path;
+                document.getElementById('cfg-retention').value = cfg.retention;
+                document.getElementById('cfg-mode').value = cfg.mode;
+                document.getElementById('cfg-interval').value = cfg.interval;
+                document.getElementById('cfg-auto-sync').checked = cfg.autoSync;
+                document.getElementById('cfg-interval-box').classList.toggle('hidden', cfg.mode !== 'interval');
+                document.getElementById('modal-backup-settings').classList.replace('hidden', 'flex');
+                lucide.createIcons();
+            },
+
+            hideModal() { document.getElementById('modal-backup-settings').classList.replace('flex', 'hidden'); },
+
+            saveConfig() {
+                const newCfg = {
+                    workerUrl: document.getElementById('cfg-worker-url').value.replace(/\/$/, ""),
+                    path: document.getElementById('cfg-backup-path').value || 'tunehub_v1',
+                    retention: document.getElementById('cfg-retention').value,
+                    mode: document.getElementById('cfg-mode').value,
+                    interval: document.getElementById('cfg-interval').value,
+                    autoSync: document.getElementById('cfg-auto-sync').checked
+                };
+                localStorage.setItem(this.configKey, JSON.stringify(newCfg));
+                this.setupInterval();
+                this.hideModal();
+                alert('配置已保存');
+            }
+        };
+
+        // 注入到原有的 Storage.save 逻辑中
+        const OriginalSave = Storage.save;
+        Storage.save = function(data, skipCloud = false) {
+            OriginalSave(data);
+            if (!skipCloud && backupMgr.getConfig().mode === 'instant') backupMgr.manualBackup(true);
+        };
+
+        // 在 window.onload 处增加初始化
+        const oldLoad = window.onload;
+        window.onload = () => { if(oldLoad) oldLoad(); backupMgr.init(); };
+
         function toggleMobileMenu() {
             document.getElementById('mobile-menu').classList.add('hidden');
         }
@@ -1112,45 +1128,6 @@
         // 启动应用
         window.onload = () => app.init();
 
-        // 在 script 底部增加
-        function saveS3Settings() {
-            const config = {
-                enabled: document.getElementById('s3-enabled').checked,
-                endpoint: document.getElementById('s3-endpoint').value,
-                bucket: document.getElementById('s3-bucket').value,
-                directory: document.getElementById('s3-dir').value,
-                accessKey: document.getElementById('s3-ak').value,
-                secretKey: document.getElementById('s3-sk').value,
-                mode: document.getElementById('s3-mode').value,
-                interval: parseInt(document.getElementById('s3-interval').value),
-                retention: parseInt(document.getElementById('s3-retention').value),
-                autoSync: document.getElementById('s3-autosync').checked
-            };
-            S3Backup.saveConfig(config);
-            document.getElementById('modal-s3').classList.add('hidden');
-            alert('配置已保存');
-        }
-
-        // 加载配置到 UI
-        function loadS3SettingsToUI() {
-            const cfg = S3Backup.getConfig();
-            document.getElementById('s3-enabled').checked = cfg.enabled;
-            document.getElementById('s3-endpoint').value = cfg.endpoint;
-            document.getElementById('s3-bucket').value = cfg.bucket;
-            document.getElementById('s3-dir').value = cfg.directory;
-            document.getElementById('s3-ak').value = cfg.accessKey;
-            document.getElementById('s3-sk').value = cfg.secretKey;
-            document.getElementById('s3-mode').value = cfg.mode;
-            document.getElementById('s3-interval').value = cfg.interval;
-            document.getElementById('s3-retention').value = cfg.retention;
-            document.getElementById('s3-autosync').checked = cfg.autoSync;
-        }
-
-        // 页面关闭前备份
-        window.addEventListener('beforeunload', () => {
-            const cfg = S3Backup.getConfig();
-            if (cfg.enabled) S3Backup.upload(Storage.get());
-        });
     </script>
 </body>
 </html>
