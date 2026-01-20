@@ -341,6 +341,33 @@
         lucide.createIcons();
 
         const API_BASE = 'https://nginx.21zys.com/music';
+
+        // ------------------------------------------------------------
+        // 配置区域：反向代理设置
+        // ------------------------------------------------------------
+        const USER_CONFIG = {
+            // TODO: 请修改为你的实际域名，例如 https://music.example.com
+            // 注意：不要带末尾的斜杠
+            customDomain: 'https://nginx.21zys.com/img1_kuwo', 
+            
+            // 启用代理
+            enableProxy: true
+        };
+
+        // 图片 URL 处理工具函数
+        function getCoverUrl(song) {
+            // 1. 优先尝试使用歌曲对象中自带的 pic 字段 (假设 API 返回了原始链接)
+            let url = song.pic || `${API_BASE}/api/?source=${song.platform}&type=pic&id=${song.id}`;
+            
+            // 2. 针对酷我音乐的图片跨域处理 (替换 img1.kwcdn.kuwo.cn)
+            if (USER_CONFIG.enableProxy && url.includes('img1.kwcdn.kuwo.cn')) {
+                // 将 https://img1.kwcdn.kuwo.cn/xxx 替换为 https://your-domain.com/img1_kuwo/xxx
+                // 同时支持 http 和 https 协议的替换
+                return url.replace(/https?:\/\/img1\.kwcdn\.kuwo\.cn/, `${USER_CONFIG.customDomain}/img1_kuwo`);
+            }
+            
+            return url;
+        }
         
         // 数据持久化管理 (LocalStorage)
         const Storage = {
@@ -532,8 +559,8 @@
                             const card = document.createElement('div');
                             card.className = "bg-dark-800 hover:bg-gray-800 p-3 md:p-4 rounded-xl transition flex gap-4 group border border-transparent hover:border-brand-500/30 shadow-sm hover:shadow-lg";
                             
-                            // 封面图片 URL
-                            const picUrl = `${API_BASE}/api/?source=${song.platform}&type=pic&id=${song.id}`;
+                            // 使用新的 getCoverUrl 函数处理图片地址
+                            const picUrl = getCoverUrl(song);
                             
                             // 平台 Badge 颜色
                             let platformColor = 'text-gray-400';
@@ -603,8 +630,8 @@
                 if(!song) return;
                 this.state.currentSong = song;
                 
-                // 1. UI 更新
-                const picUrl = `${API_BASE}/api/?source=${song.platform}&type=pic&id=${song.id}`;
+                // 1. UI 更新 (使用代理后的图片地址)
+                const picUrl = getCoverUrl(song);
                 
                 // 底部栏
                 document.getElementById('player-title').innerText = song.name;
