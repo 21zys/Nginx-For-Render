@@ -511,62 +511,57 @@
 
 		// --- S3 备份管理中心 ---
 		const S3Backup = {
-			getConfig: () => JSON.parse(localStorage.getItem('s3_backup_config') || '{"enabled":false,"endpoint":"","accessKey":"","secretKey":"","bucket":"","region":"auto","directory":"backups/","mode":"interval","interval":30,"retention":5,"autoSync":true}'),
-			saveConfig: (config) => {
-				localStorage.setItem('s3_backup_config', JSON.stringify(config));
-				S3Backup.setupTimer();
-			},
+            getConfig: () => {
+                const defaultCfg = {
+                    enabled: false, endpoint: '', bucket: '', 
+                    accessKey: '', secretKey: '', directory: 'backup/music/',
+                    mode: 'interval', interval: 30, retention: 5, autoSync: true
+                };
+                return Object.assign(defaultCfg, JSON.parse(localStorage.getItem('s3_config') || '{}'));
+            },
+            
+            saveConfig: (cfg) => {
+                localStorage.setItem('s3_config', JSON.stringify(cfg));
+                S3Backup.initTimer();
+            },
 
-			// 简易 AWS SigV4 签名及上传实现
-			async upload(jsonData) {
-				const cfg = this.getConfig();
-				if (!cfg.enabled || !cfg.endpoint) return;
+            async upload(data) {
+                const cfg = this.getConfig();
+                if (!cfg.enabled || !cfg.endpoint || !cfg.bucket) return;
 
-				const timestamp = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
-				const date = timestamp.slice(0, 8);
-				const fileName = `${cfg.directory}backup_${Date.now()}.json`;
-				const endpoint = cfg.endpoint.replace(/\/$/, '');
-				const url = `${endpoint}/${cfg.bucket}/${fileName}`;
-				const body = JSON.stringify(jsonData);
+                const fileName = `backup_${Date.now()}.json`;
+                const url = `${cfg.endpoint.replace(/\/$/, '')}/${cfg.bucket}/${cfg.directory}${fileName}`;
 
-				// 注意：生产环境建议通过后端签名，前端签名需注意 SecretKey 暴露风险
-				// 此处为了静态网站需求，直接使用前端 fetch 模拟简单 PUT
-				try {
-					const res = await fetch(url, {
-						method: 'PUT',
-						body: body,
-						headers: { 'Content-Type': 'application/json' }
-						// 注意：由于原生 S3 签名算法极其复杂，通常建议 S3 桶开启公共写(带特定前缀) 
-						// 或者配合简单 Token。此处预留标准的 fetch 接口。
-					});
-					if (res.ok) {
-						console.log('S3 Backup Success:', fileName);
-						this.cleanup(cfg);
-					}
-				} catch (e) { console.error('S3 Backup Failed', e); }
-			},
+                try {
+                    // 注意：这里是 400 错误的重灾区。
+                    // 对于 R2，通常需要使用 AWS SDK 才能正确生成 Authorization Header。
+                    // 如果你使用公共可写的 URL（不推荐）或预签名 URL，fetch 才能成功。
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            // 如果你有 Worker 代理，可以在这里加鉴权 Token
+                        },
+                        body: JSON.stringify(data)
+                    });
 
-			async cleanup(cfg) {
-				// 逻辑：通过 ListObjects 检查文件数，删除超出 retention 的旧文件
-				// 考虑到最小化影响，建议用户在 S3 端配置“生命周期管理”更为高效
-			},
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    console.log('备份成功:', fileName);
+                } catch (e) {
+                    console.error('备份失败，请检查 R2 CORS 设置或鉴权配置:', e);
+                }
+            },
 
-			async syncLatest() {
-				const cfg = this.getConfig();
-				if (!cfg.enabled || !cfg.autoSync) return;
-				// 逻辑：获取目录最新的文件并 Storage.save()
-				console.log('S3 Auto-sync checking...');
-			},
-
-			timer: null,
-			setupTimer() {
-				if (this.timer) clearInterval(this.timer);
-				const cfg = this.getConfig();
-				if (cfg.enabled && cfg.mode === 'interval') {
-					this.timer = setInterval(() => this.upload(Storage.get()), cfg.interval * 60000);
-				}
-			}
-		};
+            timer: null,
+            initTimer() {
+                if (this.timer) clearInterval(this.timer);
+                const cfg = this.getConfig();
+                if (cfg.enabled && cfg.mode === 'interval') {
+                    this.timer = setInterval(() => this.upload(Storage.get()), cfg.interval * 60000);
+                }
+            }
+        };
 
 
         // 核心应用逻辑
@@ -588,8 +583,8 @@
             init() {
                 this.renderNav();
                 loadS3SettingsToUI();
-                S3Backup.setupTimer();
-                if (S3Backup.getConfig().autoSync) S3Backup.syncLatest();
+                S3Backup.initTimer();
+                
                 
                 // 监听 Audio 事件
                 const audio = this.elements.audio;
