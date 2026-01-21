@@ -268,7 +268,7 @@
         <div class="absolute inset-0 bg-black/40 pointer-events-none"></div>
 
         <!-- 顶部导航 -->
-        <div class="relative z-10 flex items-center justify-between p-6 md:px-12">
+        <div class="relative z-10 flex items-center justify-between p-4 md:p-6 md:px-12">
             <button onclick="app.toggleLyricsPage()" class="text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-full transition">
                 <i data-lucide="chevron-down" size="32"></i>
             </button>
@@ -282,24 +282,24 @@
         </div>
 
         <!-- 歌词内容区 -->
-        <div class="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-20 p-8 overflow-hidden">
+        <div class="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-start md:justify-center gap-4 md:gap-20 p-4 md:p-8 overflow-hidden">
             <!-- 唱片封面区 (左侧/上方) -->
             <div class="w-full md:w-1/2 flex items-center justify-center flex-col shrink-0">
-                <div class="relative mt-36 w-64 h-64 md:w-96 md:h-96 rounded-full overflow-hidden shadow-2xl border-4 border-white/10 ring-1 ring-white/5">
+                <div class="relative mt-36 w-48 h-48 sm:w-64 sm:h-64 md:w-96 md:h-96 rounded-full overflow-hidden shadow-2xl border-4 border-white/10 ring-1 ring-white/5 shrink-0">
                     <img id="lyrics-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23333'%3E%3Crect width='100' height='100'/%3E%3C/svg%3E" class="w-full h-full object-cover disk-spin disk-paused" alt="Album Art">
                     <!-- 中心孔 -->
                     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-dark-900 rounded-full border border-gray-700 flex items-center justify-center">
                         <div class="w-4 h-4 bg-black rounded-full"></div>
                     </div>
                 </div>
-                <div class="mt-8 text-center max-w-md mx-auto">
+                <div class="mt-4 text-center max-w-md mx-auto">
                     <h2 id="lyrics-title" class="text-2xl md:text-3xl font-bold text-white mb-2 line-clamp-2">TuneHub</h2>
                     <p id="lyrics-artist" class="text-lg text-gray-300 truncate">Ready to play</p>
                 </div>
             </div>
 
             <!-- 歌词滚动区 (右侧/下方) -->
-            <div class="w-full md:w-1/2 h-[40vh] md:h-[60vh] relative mask-image-linear">
+            <div class="w-full md:w-1/2 flex-1 md:h-[60vh] relative mask-image-linear min-h-0">
                 <div id="lyrics-container" class="h-full overflow-y-auto scroll-smooth text-center space-y-6 py-[50%] px-4 no-scrollbar">
                     <p class="text-gray-400">点击播放开始听歌</p>
                 </div>
@@ -316,7 +316,7 @@
                 <div id="lyrics-progress-bar" class="absolute top-0 left-0 h-full bg-brand-500 rounded-full w-0 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
             </div>
             <div class="flex justify-center items-center gap-8 md:gap-12">
-                <button onclick="app.setMode()" class="text-gray-400 hover:text-white"><i data-lucide="repeat" size="24"></i></button>
+                <button onclick="app.setMode()" id="lyrics-btn-mode" class="text-gray-400 hover:text-white"><i data-lucide="repeat" size="24"></i></button>
                 <button onclick="app.prev()" class="text-white hover:scale-110 transition"><i data-lucide="skip-back" size="32" class="fill-white"></i></button>
                 <button onclick="app.togglePlay()" class="bg-brand-500 text-white rounded-full p-4 hover:scale-110 hover:bg-brand-400 transition shadow-lg shadow-brand-500/30">
                     <i id="lyrics-play-icon" data-lucide="play" size="32" class="fill-current ml-1"></i>
@@ -887,25 +887,28 @@
             
             setMode() {
                 const modes = ['loop', 'random', 'one']; 
-                // loop: 列表循环, random: 随机, one: 单曲循环
                 const icons = {'loop': 'repeat', 'random': 'shuffle', 'one': 'repeat-1'};
                 
                 const currentIdx = modes.indexOf(this.state.mode);
                 const nextMode = modes[(currentIdx + 1) % modes.length];
                 this.state.mode = nextMode;
                 
-                const btn = document.getElementById('btn-mode');
-                btn.innerHTML = `<i data-lucide="${icons[nextMode]}" size="18"></i>`;
-                
-                // 单曲循环逻辑
-                if (nextMode === 'one') {
-                    this.elements.audio.loop = true;
-                    btn.classList.add('text-brand-500');
-                } else {
-                    this.elements.audio.loop = false;
-                    btn.classList.remove('text-brand-500');
-                    if(nextMode === 'random') btn.classList.add('text-brand-500');
-                }
+                // 同时更新两个页面的按钮图标和颜色
+                const btnIds = ['btn-mode', 'lyrics-btn-mode'];
+                btnIds.forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (!btn) return;
+                    btn.innerHTML = `<i data-lucide="${icons[nextMode]}" size="${id === 'btn-mode' ? '18' : '24'}"></i>`;
+                    
+                    if (nextMode !== 'loop') {
+                        btn.classList.add('text-brand-500');
+                    } else {
+                        btn.classList.remove('text-brand-500');
+                    }
+                });
+            
+                // 处理单曲循环逻辑
+                this.elements.audio.loop = (nextMode === 'one');
                 lucide.createIcons();
             },
             
