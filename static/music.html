@@ -293,6 +293,9 @@
 
         <!-- 音量/功能 (Desktop) -->
         <div class="hidden md:flex w-1/4 justify-end items-center gap-4">
+            <button onclick="app.showDownloadModal(app.state.currentSong)" class="text-gray-400 hover:text-white p-2 rounded hover:bg-white/10" title="下载音乐">
+                <i data-lucide="download" size="20"></i>
+            </button>
             <button onclick="app.toggleLyricsPage()" class="text-gray-400 hover:text-white p-2 rounded hover:bg-white/10" title="打开歌词">
                 <i data-lucide="mic-2" size="20"></i>
             </button>
@@ -441,6 +444,33 @@
         </div>
     </div>
 
+    <div id="modal-download" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark-800 rounded-xl max-w-sm w-full p-6 border border-gray-700 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="download" class="text-brand-500"></i> 选择下载音质
+            </h3>
+            <div class="space-y-2 mb-6">
+                <button onclick="app.download('128k')" class="w-full flex items-center justify-between p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg hover:bg-gray-700 transition group">
+                    <span class="text-gray-200">标准音质 (128kbps)</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-600 text-gray-400">MP3</span>
+                </button>
+                <button onclick="app.download('320k')" class="w-full flex items-center justify-between p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg hover:bg-gray-700 transition group">
+                    <span class="text-gray-200">高品质 (320kbps)</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">HQ</span>
+                </button>
+                <button onclick="app.download('flac')" class="w-full flex items-center justify-between p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg hover:bg-gray-700 transition group">
+                    <span class="text-gray-200">无损音质 (FLAC)</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500">LOSSLESS</span>
+                </button>
+                <button onclick="app.download('flac24bit')" class="w-full flex items-center justify-between p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg hover:bg-gray-700 transition group">
+                    <span class="text-gray-200">Hi-Res 音质 (24bit)</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-500">HI-RES</span>
+                </button>
+            </div>
+            <button onclick="document.getElementById('modal-download').classList.add('hidden')" class="w-full py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition">取消</button>
+        </div>
+    </div>
+    
     <script>
         // 初始化图标
         lucide.createIcons();
@@ -750,6 +780,9 @@
                                     </div>
                                 </div>
                                 <div class="flex flex-col justify-center">
+                                    <button onclick='app.showDownloadModal(${JSON.stringify(song).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-brand-500 transition p-2 hover:bg-gray-700 rounded-full">
+                                        <i data-lucide="download" size="20"></i>
+                                    </button>
                                     <button onclick='app.showAddToPlaylistModal(${JSON.stringify(song).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-brand-500 transition p-2 hover:bg-gray-700 rounded-full">
                                         <i data-lucide="plus" size="20"></i>
                                     </button>
@@ -1144,6 +1177,31 @@
                     }
                 });
             }
+
+            // 显示下载弹窗
+            showDownloadModal(song) {
+                if (!song) return;
+                this.state.tempDownloadSong = song; // 暂存要下载的歌曲信息
+                const modal = document.getElementById('modal-download');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                lucide.createIcons();
+            },
+
+            // 执行下载
+            download(br) {
+                const song = this.state.tempDownloadSong;
+                if (!song) return;
+                
+                // 构造下载链接，接口会返回 302 重定向到文件地址
+                const downloadUrl = `${API_BASE}/api/?source=${song.platform}&type=url&id=${song.id}&br=${br}`;
+                
+                // 使用新窗口打开以触发浏览器下载
+                window.open(downloadUrl, '_blank');
+                
+                // 关闭弹窗
+                document.getElementById('modal-download').classList.add('hidden');
+            },
         };
 
         const backupMgr = {
