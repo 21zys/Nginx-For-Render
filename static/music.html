@@ -1208,12 +1208,32 @@
                 if (!song) return;
 
                 // 构造下载链接
-                // API 返回的是 302 Redirect，直接打开即可触发浏览器下载行为
                 const downloadUrl = `${API_BASE}/api/?source=${song.platform}&type=url&id=${song.id}&br=${quality}`;
                 
-                // 使用 window.open 打开链接进行下载
-                window.open(downloadUrl, '_blank');
+                // --- 修复开始 ---
+                // 创建一个临时的 a 标签
+                const link = document.createElement('a');
+                link.style.display = 'none';
+                link.href = downloadUrl;
                 
+                // target="_blank" 确保在后台/新标签页处理，不影响当前播放
+                link.setAttribute('target', '_blank');
+                
+                // 关键点：添加 noreferrer noopener
+                // noreferrer: 告诉目标服务器不要记录来源（防盗链绕过，模拟直接复制粘贴URL）
+                // noopener: 安全属性，防止新页面访问原页面上下文
+                link.setAttribute('rel', 'noreferrer noopener');
+                
+                // 将标签加入 DOM，触发点击，然后移除
+                document.body.appendChild(link);
+                link.click();
+                
+                // 稍微延迟移除，确保点击事件被捕获
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                }, 100);
+                // --- 修复结束 ---
+
                 document.getElementById('modal-download').classList.add('hidden');
             }
 
