@@ -1212,14 +1212,41 @@
                 if (!song) return;
 
                 // 构造下载链接
-                // API 返回的是 302 Redirect，直接打开即可触发浏览器下载行为
                 const downloadUrl = `${API_BASE}/api/?source=${song.platform}&type=url&id=${song.id}&br=${quality}`;
-                
-                // 使用 window.open 打开链接进行下载
-                window.open(downloadUrl, '_blank');
-                
+
+                // --- 针对酷我音乐的特殊处理 ---
+                if (song.platform === 'kuwo') {
+                    // 尝试写入剪贴板
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(downloadUrl).then(() => {
+                            alert('⚠️ 酷我音乐下载提示：\n\n链接已自动复制到剪贴板！\n请新开一个浏览器标签页，粘贴地址并访问即可下载。');
+                        }).catch(err => {
+                            // 剪贴板写入失败的降级处理
+                            prompt('自动复制失败，请手动复制以下链接去浏览器下载：', downloadUrl);
+                        });
+                    } else {
+                        // 浏览器不支持剪贴板API的降级处理
+                        prompt('请手动复制以下链接去浏览器下载：', downloadUrl);
+                    }
+                } 
+                // --- 其他平台（如网易云）继续尝试直接下载 ---
+                else {
+                    // 创建隐藏的 iframe 进行下载，体验最好
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = downloadUrl;
+                    document.body.appendChild(iframe);
+                    
+                    // 60秒后清理 iframe
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 60000);
+                }
+
+                // 关闭下载弹窗
                 document.getElementById('modal-download').classList.add('hidden');
             }
+
 
         };
 
