@@ -129,18 +129,29 @@
                 <!-- 搜索视图 -->
                 <div id="view-search" class="max-w-6xl mx-auto w-full">
                     <div class="mb-8">
-                        <div class="relative group">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <i data-lucide="search" class="text-gray-400 group-focus-within:text-brand-500 transition-colors"></i>
+                        <div class="flex flex-col md:flex-row gap-3 relative group">
+                            <!-- 来源选择 -->
+                            <select id="search-source" class="bg-dark-800 text-white px-4 py-4 rounded-2xl border-2 border-transparent focus:border-brand-600 outline-none transition-all shadow-lg appearance-none cursor-pointer">
+                                <option value="aggregateSearch">聚合搜索</option>
+                                <option value="netease">网易云音乐</option>
+                                <option value="kuwo">酷我音乐</option>
+                                <option value="qq">QQ音乐</option>
+                            </select>
+                            
+                            <!-- 输入框容器 -->
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i data-lucide="search" class="text-gray-400"></i>
+                                </div>
+                                <input type="text" id="search-input" 
+                                    class="w-full bg-dark-800 text-white pl-12 pr-4 py-4 rounded-2xl border-2 border-transparent focus:border-brand-600 focus:outline-none transition-all shadow-lg placeholder-gray-500 text-lg"
+                                    placeholder="搜索歌曲、歌手..."
+                                    onkeydown="if(event.key === 'Enter') app.search(this.value, true)"
+                                >
+                                <button onclick="app.search(document.getElementById('search-input').value, true)" class="absolute right-2 top-2 bottom-2 bg-brand-600 hover:bg-brand-500 text-white px-6 rounded-xl font-medium transition-colors">
+                                    搜索
+                                </button>
                             </div>
-                            <input type="text" id="search-input" 
-                                class="w-full bg-dark-800 text-white pl-12 pr-4 py-4 rounded-2xl border-2 border-transparent focus:border-brand-600 focus:outline-none transition-all shadow-lg placeholder-gray-500 text-lg"
-                                placeholder="搜索歌曲、歌手 (支持网易/QQ/酷我)..."
-                                onkeydown="if(event.key === 'Enter') app.search(this.value)"
-                            >
-                            <button onclick="app.search(document.getElementById('search-input').value)" class="absolute right-2 top-2 bottom-2 bg-brand-600 hover:bg-brand-500 text-white px-6 rounded-xl font-medium transition-colors">
-                                搜索
-                            </button>
                         </div>
                     </div>
 
@@ -496,11 +507,20 @@
             state: {
                 currentSong: null,
                 isPlaying: false,
-                playlist: [], // 当前播放队列
+                playlist: [],
                 currentIndex: -1,
                 lyrics: [],
-                mode: 'loop', // loop, one, random
-                activePlaylistView: null
+                mode: 'loop',
+                activePlaylistView: null,
+                // --- 新增分页状态 ---
+                searchMeta: {
+                    keyword: '',
+                    source: 'aggregateSearch',
+                    page: 1,
+                    limit: 20,
+                    hasMore: true,
+                    isLoading: false
+                }
             },
             
             elements: {
@@ -539,6 +559,21 @@
                 // 默认加载
                 document.getElementById('view-search').classList.remove('hidden');
                 document.getElementById('search-status').classList.remove('hidden');
+
+                // 滚动加载更多
+                const container = document.getElementById('view-container');
+                container.addEventListener('scroll', () => {
+                    // 只有在搜索视图且不在加载中时触发
+                    if (document.getElementById('view-search').classList.contains('hidden')) return;
+                    
+                    const { scrollTop, scrollHeight, clientHeight } = container;
+                    // 距离底部 100px 时加载下一页
+                    if (scrollTop + clientHeight >= scrollHeight - 100) {
+                        if (!this.state.searchMeta.isLoading && this.state.searchMeta.hasMore) {
+                            this.search(this.state.searchMeta.keyword, false);
+                        }
+                    }
+                });
             },
 
             // 路由导航
@@ -606,37 +641,53 @@
             },
 
             // 功能：搜索
-            async search(keyword) {
+            async search(keyword, isNewSearch = true) {
                 if (!keyword.trim()) return;
-                
-                const status = document.getElementById('search-status');
+            
+                const meta = this.state.searchMeta;
                 const resultsEl = document.getElementById('search-results');
-                
-                status.classList.remove('hidden');
-                status.innerHTML = `<i data-lucide="loader-2" class="animate-spin mx-auto mb-2 text-brand-500" size="32"></i><p>正在搜索全网音乐库...</p>`;
-                lucide.createIcons();
-                resultsEl.innerHTML = '';
-
+                const status = document.getElementById('search-status');
+                const source = document.getElementById('search-source').value;
+            
+                // 如果是新搜索，重置分页和内容
+                if (isNewSearch) {
+                    meta.page = 1;
+                    meta.keyword = keyword;
+                    meta.source = source;
+                    meta.hasMore = true;
+                    resultsEl.innerHTML = '';
+                    window.getElementById('view-container').scrollTop = 0;
+                    
+                    status.classList.remove('hidden');
+                    status.innerHTML = `<i data-lucide="loader-2" class="animate-spin mx-auto mb-2 text-brand-500" size="32"></i><p>正在搜索...</p>`;
+                    lucide.createIcons();
+                }
+            
+                if (meta.isLoading || !meta.hasMore) return;
+                meta.isLoading = true;
+            
+                // 只有聚合搜索不需要 source 参数，普通搜索需要
+                const typeParam = meta.source === 'aggregateSearch' ? 'aggregateSearch' : 'search';
+                const sourceParam = meta.source === 'aggregateSearch' ? '' : `&source=${meta.source}`;
+                const url = `${API_BASE}/api/?type=${typeParam}${sourceParam}&keyword=${encodeURIComponent(meta.keyword)}&page=${meta.page}&limit=${meta.limit}`;
+            
                 try {
-                    // 使用聚合搜索接口
-                    const res = await fetch(`${API_BASE}/api/?type=aggregateSearch&keyword=${encodeURIComponent(keyword)}`);
+                    const res = await fetch(url);
                     const json = await res.json();
                     
                     if (json.code === 200 && json.data.results && json.data.results.length > 0) {
                         status.classList.add('hidden');
+                        
                         json.data.results.forEach(song => {
                             const card = document.createElement('div');
                             card.className = "bg-dark-800 hover:bg-gray-800 p-3 md:p-4 rounded-xl transition flex gap-4 group border border-transparent hover:border-brand-500/30 shadow-sm hover:shadow-lg";
                             
-                            // 使用新的 getCoverUrl 函数处理图片地址
                             const picUrl = getCoverUrl(song);
-                            
-                            // 平台 Badge 颜色
                             let platformColor = 'text-gray-400';
                             if(song.platform === 'netease') platformColor = 'text-red-400';
                             if(song.platform === 'qq') platformColor = 'text-green-400';
                             if(song.platform === 'kuwo') platformColor = 'text-yellow-400';
-
+            
                             card.innerHTML = `
                                 <div class="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-lg overflow-hidden bg-gray-900 shadow-inner">
                                     <img src="${picUrl}" loading="lazy" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' fill=\'%23333\'%3E%3Crect width=\'100\' height=\'100\'/%3E%3C/svg%3E'">
@@ -660,15 +711,28 @@
                             `;
                             resultsEl.appendChild(card);
                         });
+                        
                         lucide.createIcons();
+                        meta.page++; // 准备下一页
+                        
+                        // 如果返回的数据少于 limit，说明没更多了
+                        if (json.data.results.length < meta.limit) {
+                            meta.hasMore = false;
+                        }
                     } else {
-                        status.classList.remove('hidden');
-                        status.innerHTML = "未找到相关歌曲，请换个关键词";
+                        if (isNewSearch) {
+                            status.classList.remove('hidden');
+                            status.innerHTML = "未找到相关歌曲，请换个关键词";
+                        }
+                        meta.hasMore = false;
                     }
                 } catch (e) {
-                    status.classList.remove('hidden');
-                    status.innerHTML = "搜索服务暂时不可用，请稍后重试";
                     console.error(e);
+                    if (isNewSearch) {
+                        status.innerHTML = "搜索服务异常";
+                    }
+                } finally {
+                    meta.isLoading = false;
                 }
             },
 
