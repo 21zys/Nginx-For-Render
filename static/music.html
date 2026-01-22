@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TuneHub Lite | 悦听音乐</title>
+    <!-- 新增：强制将 HTTP 请求升级为 HTTPS，解决酷我音乐下载被浏览器拦截的问题 -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- 新增：全局禁止发送 Referer，解决防盗链问题 -->
+    <meta name="referrer" content="no-referrer">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
